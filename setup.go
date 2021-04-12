@@ -18,6 +18,7 @@ import (
 // SetupFFMPEGStreaming configures a camera to use ffmpeg to stream video.
 // The returned handle can be used to interact with the camera (start, stop, take snapshot…).
 func SetupFFMPEGStreaming(cam *accessory.Camera, cfg ffmpeg.Config) ffmpeg.FFMPEG {
+
 	ff := ffmpeg.New(cfg)
 
 	setupStreamManagement(cam.StreamManagement1, ff, cfg.MultiStream)
@@ -44,6 +45,7 @@ func setupStreamManagement(m *service.CameraRTPStreamManagement, ff ffmpeg.FFMPE
 	setTLV8Payload(m.SupportedAudioStreamConfiguration.Bytes, rtp.DefaultAudioStreamConfiguration())
 
 	m.SelectedRTPStreamConfiguration.OnValueRemoteUpdate(func(buf []byte) {
+		log.Debug.Println("Running SelectedRTPStreamConfiguration")
 		var cfg rtp.StreamConfiguration
 		err := tlv8.Unmarshal(buf, &cfg)
 		if err != nil {
@@ -83,6 +85,7 @@ func setupStreamManagement(m *service.CameraRTPStreamManagement, ff ffmpeg.FFMPE
 	})
 
 	m.SetupEndpoints.OnValueUpdateFromConn(func(conn net.Conn, c *characteristic.Characteristic, new, old interface{}) {
+		log.Debug.Println("Running SelectedRTPStreamConfiguration")
 		buf := m.SetupEndpoints.GetValue()
 		var req rtp.SetupEndpoints
 		err := tlv8.Unmarshal(buf, &req)

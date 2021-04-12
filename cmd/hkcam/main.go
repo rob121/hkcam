@@ -2,14 +2,14 @@ package main
 
 import (
 	"flag"
-
+	"fmt"
 	"github.com/brutella/hc"
 	"github.com/brutella/hc/accessory"
 	"github.com/brutella/hc/log"
-
+     "crypto/md5"
 	"image"
 	"runtime"
-
+	"path/filepath"
 	"github.com/brutella/hkcam"
 	"github.com/brutella/hkcam/ffmpeg"
 )
@@ -42,10 +42,20 @@ func main() {
 
 	var minVideoBitrate *int = flag.Int("min_video_bitrate", 0, "minimum video bit rate in kbps")
 	var multiStream *bool = flag.Bool("multi_stream", false, "Allow mutliple clients to view the stream simultaneously")
-	var dataDir *string = flag.String("data_dir", "Camera", "Path to data directory")
+	var dataDir *string = flag.String("data_dir", "camera", "Path to data directory")
 	var verbose *bool = flag.Bool("verbose", true, "Verbose logging")
 	var pin *string = flag.String("pin", "00102003", "PIN for HomeKit pairing")
 	var port *string = flag.String("port", "", "Port on which transport is reachable")
+	var name *string = flag.String("name", "IP_Camera", "The name of the camera")
+
+
+	//base of filename hash
+
+
+	var fdir string
+	fdir = fmt.Sprintf("%x", md5.Sum([]byte(*inputFilename)))
+
+	*dataDir = filepath.Join(*dataDir,fdir)
 
 	flag.Parse()
 
@@ -54,7 +64,7 @@ func main() {
 		ffmpeg.EnableVerboseLogging()
 	}
 
-	switchInfo := accessory.Info{Name: "Camera", FirmwareRevision: "0.0.9", Manufacturer: "Matthias Hochgatterer"}
+	switchInfo := accessory.Info{Name: *name, FirmwareRevision: "0.0.9", Manufacturer: "Matthias Hochgatterer"}
 	cam := accessory.NewCamera(switchInfo)
 
 	cfg := ffmpeg.Config{

@@ -1,0 +1,11 @@
+{
+ "example": {
+    "id": 100,
+    "input_device": "rtsp",
+    "name": "Back Yard Camera",
+    "filename": "rtsp://user:pass@192.168.1.5:554/cam/realmonitor?channel=1&subtype=1",
+    "h264_encoder": "h264",
+    "min_video_bitrate": 0,
+    "multi_stream": false
+ }
+}

@@ -36,13 +36,49 @@ func (s *stream) stop() {
 	}
 }
 
+func (s *stream) rtspStreamingPresets(video rtp.VideoParameters, audio rtp.AudioParameters) string{
+
+	var out []string
+
+	out = append(out,"-rtsp_transport tcp")
+	out = append(out,fmt.Sprintf("-re -i %s",s.inputFilename))
+	out = append(out,"-an -sn -dn")
+	out = append(out,fmt.Sprintf("-codec:v %s",s.videoEncoder(video)))
+	out = append(out,fmt.Sprintf("-preset ultrafast -pix_fmt yuv420p -color_range mpeg -r 30"))
+	out = append(out,fmt.Sprintf("-f rawvideo -filter:v scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"))
+	out = append(out,fmt.Sprintf("-b:v 299k -payload_type %d",video.RTP.PayloadType))
+	out = append(out,fmt.Sprintf("-ssrc %d", s.resp.SsrcVideo))
+	out = append(out,fmt.Sprintf("-f rtp -srtp_out_suite AES_CM_128_HMAC_SHA1_80"))
+	out = append(out,fmt.Sprintf("-srtp_out_params %s", s.req.Video.SrtpKey()))
+	out = append(out,fmt.Sprintf("srtp://%s:%d?rtcpport=%d&localrtcpport=%d&pkt_size=%s&timeout=120", s.req.ControllerAddr.IPAddr, s.req.ControllerAddr.VideoRtpPort, s.req.ControllerAddr.VideoRtpPort, s.req.ControllerAddr.VideoRtpPort, videoMTU(s.req)))
+    out = append(out,fmt.Sprintf("-loglevel level+verbose"))
+	//-srtp_out_params v8jmfteH/lPhk59zoIBJXPU4cHWuMFAyHvmJSabX srtp://192.168.50.171:56310?rtcpport=56310&pkt_size=1316
+
+    return strings.Join(out," ")
+
+}
+
 func (s *stream) start(video rtp.VideoParameters, audio rtp.AudioParameters) error {
 	log.Debug.Println("start stream")
 
 	// -vsync 2: Fixes "Frame rate very high for a muxer not efficiently supporting it."
 	// -framerate before -i specifies the framerate for the input, after -i sets it for the output https://stackoverflow.com/questions/38498599/webcam-with-ffmpeg-on-mac-selected-framerate-29-970030-is-not-supported-by-th#38549528
 
-	ffmpegVideo := fmt.Sprintf("-f %s", s.inputDevice) +
+
+
+var ffmpegVideo string
+if s.inputDevice == "rtsp" {
+
+	// rtsp support
+ ffmpegVideo = s.rtspStreamingPresets(video,audio)
+
+	// audio support may be added later
+//                fmt.Sprintf(" -map 0:1 -acodec libfdk_aac -profile:a aac_eld -flags +global_header -f null -ar 16k -b:a 24k -bufsize 24k -ac 1 -payload_type 110")+
+//                fmt.Sprintf(" -ssrc %d -f rtp -srtp_out_suite AES_CM_128_HMAC_SHA1_80 -srtp_out_params %s",s.resp.SsrcAudio, s.req.Audio.SrtpKey())+
+//                fmt.Sprintf(" srtp://%s:%d?rtcpport=%d&localrtcpport=%d&timeout=120", s.req.ControllerAddr.IPAddr, s.req.ControllerAddr.AudioRtpPort, s.req.ControllerAddr.AudioRtpPort, s.req.ControllerAddr.AudioRtpPort)
+} else {
+// default
+ffmpegVideo = fmt.Sprintf("-f %s", s.inputDevice) +
 		fmt.Sprintf(" -framerate %d", s.framerate(video.Attributes)) +
 		fmt.Sprintf("%s", s.videoDecoderOption(video)) +
 		fmt.Sprintf(" -re -i %s", s.inputFilename) +
@@ -82,8 +118,11 @@ func (s *stream) start(video rtp.VideoParameters, audio rtp.AudioParameters) err
 		//     " -f rtp -srtp_out_suite AES_CM_128_HMAC_SHA1_80" +
 		//     fmt.Sprintf(" -srtp_out_params %s", s.req.Audio.SrtpKey()) +
 		//     fmt.Sprintf(" srtp://%s:%d?rtcpport=%d&localrtcpport=%d&timeout=60", s.req.ControllerAddr.IPAddr, s.req.ControllerAddr.AudioRtpPort, s.req.ControllerAddr.AudioRtpPort, s.req.ControllerAddr.AudioRtpPort)
-
+}
 	args := strings.Split(ffmpegVideo, " ")
+
+	fmt.Println("ffmpeg",strings.Join(args, " "))
+
 	cmd := exec.Command("ffmpeg", args[:]...)
 	cmd.Stdout = Stdout
 	cmd.Stderr = Stderr
@@ -120,6 +159,9 @@ func (s *stream) reconfigure(video rtp.VideoParameters, audio rtp.AudioParameter
 }
 
 func (s *stream) videoEncoder(param rtp.VideoParameters) string {
+
+	return "libx264" //test:ralfonso
+
 	switch param.CodecType {
 	case rtp.VideoCodecType_H264:
 		return s.h264Encoder
@@ -185,7 +227,7 @@ func videoLevel(param rtp.VideoCodecParameters) string {
 		case rtp.VideoCodecLevel3_2:
 			return "3.2"
 		case rtp.VideoCodecLevel4:
-			return "4.0"
+			return "4.0" //was 4.0
 		default:
 			break
 		}

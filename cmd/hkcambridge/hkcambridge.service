@@ -1,0 +1,15 @@
+[Unit]
+Description=Homekit Camera Server
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=simple
+PIDFile=/run/hkcambridge.pid
+ExecStart=/usr/local/bin/hkcambridge --data_dir=/var/lib/hkcambridge
+ExecStop=/bin/kill -s QUIT $MAINPID
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+root@control:/etc/systemd/syst
